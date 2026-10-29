@@ -1,0 +1,15 @@
+# Grafana dashboard provisioning for DORA Platform
+# This file is mounted at /etc/grafana/provisioning/dashboards/dashboard.yaml
+
+apiVersion: 1
+
+providers:
+  - name: 'DORA Dashboards'
+    orgId: 1
+    folder: 'DORA Metrics'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards

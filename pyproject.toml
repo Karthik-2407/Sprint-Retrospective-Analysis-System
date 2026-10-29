@@ -1,0 +1,145 @@
+[project]
+name = "dora-platform"
+version = "0.1.0"
+description = "DORA Metrics Analytics Platform"
+readme = "README.md"
+requires-python = "==3.13.*"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "alembic>=1.14.0",
+    "psycopg[binary,pool]>=3.2.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.6.0",
+    "apscheduler>=3.10.0",
+    "structlog>=25.1.0",
+    "prometheus-client>=0.20.0",
+    "streamlit>=1.40.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.8.0",
+    "mypy>=1.14.0",
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=5.0.0",
+    "testcontainers[postgresql]>=4.10.0",
+    "pre-commit>=4.0.0",
+    "pip-audit>=2.8.0",
+    "bandit>=1.7.0",
+    "mkdocs-material>=9.5.0",
+]
+
+[build-system]
+requires = ["setuptools>=75.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.uv]
+dev-dependencies = [
+    "ruff>=0.8.0",
+    "mypy>=1.14.0",
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=5.0.0",
+    "testcontainers[postgresql]>=4.10.0",
+    "pre-commit>=4.0.0",
+    "pip-audit>=2.8.0",
+    "bandit>=1.7.0",
+    "mkdocs-material>=9.5.0",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "T20", # flake8-print
+]
+ignore = []
+fixable = ["ALL"]
+unfixable = []
+exclude = [
+    ".venv",
+    "dist",
+    "build",
+    ".git",
+    "__pycache__",
+    "*.pyc",
+    "migrations/versions",
+]
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
+
+[tool.ruff.lint.isort]
+known-first-party = ["dora_platform"]
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+strict_optional = true
+show_error_codes = true
+pretty = true
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = ["src"]
+# Per-module overrides disabled for mypy 2.x compatibility
+# TODO: Fix mypy 2.x override syntax
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-q --strict-markers --strict-config"
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests requiring database",
+    "contract: Contract tests with recorded payloads",
+    "e2e: End-to-end tests",
+]
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.coverage.run]
+source = ["src/dora_platform"]
+omit = [
+    "*/tests/*",
+    "*/migrations/*",
+    "*/scripts/*",
+]
+[tool.coverage.report]
+fail_under = 80
+precision = 2
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+
+[tool.bandit]
+exclude_dirs = ["tests", "migrations", "scripts"]
+skips = ["B101", "B601"]
+
+[tool.pip-audit]
+descend = false
+format = "json"

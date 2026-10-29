@@ -1,202 +1,200 @@
-# AI-Powered Sprint Retrospective Analysis System
+# DORA Metrics Analytics Platform
 
-## Team Members
+An analytics platform that computes and visualizes **DORA software-delivery metrics** for **academic and small-team projects**, from GitHub and GitLab data stored in PostgreSQL and surfaced in Streamlit and Grafana.
 
-| Name            | ID Number   |
-| --------------- | ----------- |
-| Sanjay Vainala  | 2420030385  |
-| N Karthik       | 2420030511  |
-| G Anirudh       | 2420030758  |
-| P Rithish Rao   | 2420030778  |
+## Quick Start (< 10 minutes)
 
-## Supervisor
+### Prerequisites
+- Docker and Docker Compose
+- Make (optional, for convenience commands)
+- uv (for local development without Docker)
 
-**Supervisor Name:** RajKumar Patil
+### 1. Clone and Configure
+```bash
+git clone <repository-url>
+cd dora-platform
+cp .env.example .env
+# Edit .env with your settings (at minimum, change default passwords)
+```
 
----
+### 2. Start the Stack
+```bash
+make up
+# or: docker compose up -d
+```
 
-## Abstract
+This starts:
+- **PostgreSQL** (port 5432)
+- **API** (FastAPI, port 8000) — health at `http://localhost:8000/healthz`
+- **Worker** (APScheduler for reconciliation/backfill)
+- **Dashboard** (Streamlit, port 8501) — `http://localhost:8501`
+- **Grafana** (port 3000) — `http://localhost:3000` (admin/change-me)
 
-The abstract of the project is provided as a separate PDF document.
+### 3. Verify Health
+```bash
+curl http://localhost:8000/healthz
+# {"status": "ok"}
 
-**[View Abstract](docs/ASE-projectabstract.pdf)**
+curl http://localhost:8000/readyz
+# {"status": "ready"}
+```
 
----
+### 4. Load Demo Data (Optional)
+```bash
+make seed
+# or: python scripts/seed.py
+```
 
-## Project Description
+### 5. Run Tests
+```bash
+make test
+# or: pytest -q
+```
 
-The **AI-Powered Sprint Retrospective Analysis System** is a software system designed to analyze sprint performance and team feedback using Artificial Intelligence and Natural Language Processing (NLP). The system allows team members to submit feedback about completed sprints, including achievements, challenges, workload, and areas for improvement.
+### 6. Stop the Stack
+```bash
+make down
+# or: docker compose down
+```
 
-The system analyzes the collected feedback to identify common issues, determine sentiment, summarize sprint performance, and generate actionable recommendations for future sprints. The project aims to reduce the effort required for manual sprint retrospective analysis and help development teams make data-driven decisions for continuous improvement.
+## Development Workflow
 
----
+### Local Development (without Docker)
+```bash
+make bootstrap    # Install deps + pre-commit hooks
+make lint         # Run ruff linter
+make fmt          # Run ruff formatter
+make typecheck    # Run mypy
+make test         # Run all tests
+make ci           # Full CI pipeline (lint + typecheck + test + audit)
+```
 
-## Objectives
+### Database Migrations
+```bash
+make migrate                 # Apply migrations
+make migration m="message"   # Create new migration
+```
 
-* Collect and organize sprint retrospective feedback.
-* Analyze team feedback using NLP techniques.
-* Identify positive and negative aspects of a sprint.
-* Detect recurring problems and common issues.
-* Analyze the sentiment of team members' feedback.
-* Generate useful recommendations for future sprints.
-* Provide a simple dashboard for viewing analysis results.
+### View Logs
+```bash
+make logs
+```
 
----
+## Architecture
 
-## Key Features
+```
+GitHub / GitLab
+   │  webhooks (fast path)        │  scheduled reconciliation + backfill (truth path)
+   ▼                              ▼
+┌────────────────────────────────────────────┐
+│ api (FastAPI): webhook receiver, REST API   │──┐
+│ worker: pollers, backfill, recompute jobs   │  │  verify signature → store raw event → enqueue
+└────────────────────────────────────────────┘  │
+                                                ▼
+                         PostgreSQL ── raw_events (append-only JSONB)
+                                    ── normalized tables (PRs, commits, deployments, incidents, links)
+                                    ── metric_snapshots (versioned by definition)
+                                                │
+                    ┌───────────────────────────┴──────────────────────────┐
+                    ▼                                                      ▼
+            Streamlit (primary UI)                              Grafana (time-series, ops)
+                    └──────────── read-only DB role / API ────────────────┘
+```
 
-* Sprint feedback collection
-* Sentiment analysis
-* Identification of recurring issues
-* Sprint performance analysis
-* AI-based improvement recommendations
-* Feedback summary generation
-* Data visualization dashboard
-* Sprint-to-sprint comparison
+## Key Differentiators
 
----
-
-## Technology Stack
-
-* **Frontend:** HTML, CSS, JavaScript
-* **Backend:** Python / Flask
-* **AI/NLP:** Python NLP libraries
-* **Database:** SQLite
-* **Visualization:** Plotly
-* **Version Control:** Git and GitHub
-
----
+1. **Definitions as versioned ADRs** — Every metric definition is documented and versioned
+2. **"N/A, not 0"** — Missing data never becomes zero; typed reasons for undetectability
+3. **Strict incident-to-deployment linking** — Only explicit, auditable links count for CFR
+4. **Statistical rigor** — Spearman ρ, n ≥ 30, sample size shown with every number
+5. **PR-merge-to-deploy lead time** — Measures the part of the pipeline a team controls
+6. **Explainability / evidence drill-down** — Click any number to see the raw events behind it
+7. **Tenancy built for education** — Institution → course/cohort → team → repository with RLS
+8. **Current DORA model** — Five metrics shown as distributions, not elite/high/medium/low labels
+9. **Reproducibility bundle** — Export raw events + metric code version + definition versions
+10. **Dogfooding** — This repository is tenant #1; its own CI/CD emits deployments the platform measures
 
 ## Project Structure
 
-```text
-AI-Powered-Sprint-Retrospective-Analysis-System/
-│
-├── README.md
-├── Abstract.pdf
-├── requirements.txt
-├── src/
-│   ├── app.py
-│   ├── templates/
-│   ├── static/
-│   └── ...
-└── ...
+```
+.
+├── CLAUDE.md                      # Governing specification
+├── README.md                      # This file
+├── pyproject.toml                 # Python project config
+├── uv.lock                        # Locked dependencies
+├── Makefile                       # Convenience commands
+├── Dockerfile                     # Multi-stage container image
+├── docker-compose.yml             # Dev stack
+├── docker-compose.prod.yml        # Prod overrides
+├── .env.example                   # Environment variable template
+├── .pre-commit-config.yaml        # Pre-commit hooks
+├── .github/
+│   ├── workflows/ci.yml           # CI pipeline
+│   ├── dependabot.yml             # Dependency updates
+│   └── PULL_REQUEST_TEMPLATE.md   # PR template
+├── docs/
+│   ├── adr/                       # Architecture Decision Records (MADR format)
+│   ├── architecture/              # Diagrams, data model
+│   ├── runbooks/                  # Operational procedures
+│   └── user/                      # User guides
+├── deploy/
+│   ├── grafana/provisioning/      # Grafana datasources/dashboards as code
+│   ├── caddy/Caddyfile            # Reverse proxy config
+│   ├── postgres/init/schema.sql   # Initial DB schema
+│   └── k8s/                       # Kubernetes/Helm (optional)
+├── migrations/                    # Alembic migrations
+├── src/dora_platform/
+│   ├── config.py                  # Configuration (pydantic-settings)
+│   ├── db/                        # Database layer (engine, models, tenant context)
+│   ├── providers/                 # GitHub/GitLab adapters (Phase 1+)
+│   ├── ingestion/                 # Event ingestion, normalization (Phase 1+)
+│   ├── domain/                    # Provider-neutral domain models (Phase 1+)
+│   ├── linking/                   # Incident↔deployment linking (Phase 2+)
+│   ├── metrics/                   # Pure metric functions (Phase 2+)
+│   ├── stats/                     # Statistics utilities (Phase 2+)
+│   ├── api/                       # FastAPI app, routers, schemas
+│   ├── dashboards/                # Streamlit app
+│   ├── worker.py                  # APScheduler worker
+│   └── observability/             # Logging, metrics, health checks
+├── scripts/
+│   └── seed.py                    # Demo data loader
+└── tests/
+    ├── unit/                      # Pure logic tests
+    ├── integration/               # Real Postgres tests (Testcontainers)
+    ├── contract/                  # Recorded provider payloads
+    ├── e2e/                       # Full stack tests
+    └── fixtures/                  # Golden datasets
 ```
 
-> The project structure may be updated as development progresses.
+## Configuration
 
----
+All configuration via environment variables (see `.env.example`). Key variables:
 
-## Setup and Execution Instructions
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `APP_ENV` | Environment: dev, test, staging, prod |
+| `LOG_LEVEL` | Logging level (DEBUG, INFO, WARNING, ERROR) |
+| `GITHUB_APP_ID` | GitHub App ID for authentication |
+| `GITHUB_WEBHOOK_SECRET` | Secret for webhook signature verification |
+| `MIN_SAMPLE_SIZE` | Minimum n for Spearman correlation (default: 30) |
+| `METRIC_WINDOW_DAYS` | Default rolling window (default: 28) |
+| `RECONCILE_INTERVAL_MINUTES` | Reconciliation job interval (default: 15) |
 
-### 1. Clone the Repository
+## Documentation
 
-```bash
-git clone <repository-url>
-```
-
-### 2. Navigate to the Project Directory
-
-```bash
-cd AI-Powered-Sprint-Retrospective-Analysis-System
-```
-
-### 3. Create a Virtual Environment
-
-```bash
-python -m venv venv
-```
-
-### 4. Activate the Virtual Environment
-
-**Windows:**
-
-```bash
-venv\Scripts\activate
-```
-
-**Linux/macOS:**
-
-```bash
-source venv/bin/activate
-```
-
-### 5. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 6. Run the Application
-
-```bash
-python app.py
-```
-
-### 7. Open the Application
-
-Open the URL displayed in the terminal, typically:
-
-```text
-http://127.0.0.1:5000
-```
-
----
-
-## Current Phase Status
-
-### Phase 1 – Project Planning
-
-**Status: Completed ✅**
-
-* Project topic finalized
-* Problem statement identified
-* Project objectives defined
-* Initial requirements identified
-
-### Phase 2 – System Design
-
-**Status: In Progress 🔄**
-
-* System architecture planned
-* Database structure designed
-* User interface planned
-* AI/NLP workflow designed
-
-### Phase 3 – Implementation
-
-**Status: Not Started ⏳**
-
-* Frontend development
-* Backend development
-* Database integration
-* NLP/AI analysis implementation
-
-### Phase 4 – Testing and Deployment
-
-**Status: Not Started ⏳**
-
-* System testing
-* Bug fixing
-* Performance evaluation
-* Final deployment
-
-> **Update the status above according to your team's actual current phase.**
-
----
-
-## Future Enhancements
-
-* Advanced AI-generated recommendations
-* Sprint performance trend analysis
-* Automatic retrospective report generation
-* Team productivity analysis
-* Integration with project management platforms
-* Real-time sprint monitoring
-
----
+- **ADRs**: `docs/adr/` — Architecture Decision Records (MADR format)
+- **Architecture**: `docs/architecture/` — Diagrams and data model
+- **Runbooks**: `docs/runbooks/` — Deploy, rollback, backup, provider outage, secret rotation
+- **User Guides**: `docs/user/` — How to connect a repo, read dashboards
 
 ## License
 
-This project is developed for academic purposes.
+[Add your license here]
 
+## Contributing
+
+1. Read `CLAUDE.md` for project conventions
+2. Follow the [Phase 0 exit criteria](CLAUDE.md#16-delivery-roadmap-from-scratch-to-production)
+3. Run `make ci` before submitting PRs
+4. Follow Conventional Commits for commit messages

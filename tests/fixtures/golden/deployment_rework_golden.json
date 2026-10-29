@@ -1,0 +1,203 @@
+{
+  "description": "Golden dataset for deployment rework metric (PROPOSED)",
+  "test_cases": [
+    {
+      "name": "normal_rework",
+      "description": "Mix of planned and unplanned deployments",
+      "deployments": [
+        {
+          "id": "11111111-1111-1111-1111-111111111111",
+          "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          "provider": "github",
+          "external_id": "deploy-1",
+          "environment": "production",
+          "sha": "abc123def456",
+          "status": "success",
+          "deployed_at": "2024-01-15T10:00:00+00:00",
+          "finished_at": "2024-01-15T10:05:00+00:00",
+          "is_production": true,
+          "is_successful": true,
+          "is_planned": true
+        },
+        {
+          "id": "22222222-2222-2222-2222-222222222222",
+          "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          "provider": "github",
+          "external_id": "deploy-2",
+          "environment": "production",
+          "sha": "def456abc789",
+          "status": "success",
+          "deployed_at": "2024-01-16T10:00:00+00:00",
+          "finished_at": "2024-01-16T10:05:00+00:00",
+          "is_production": true,
+          "is_successful": true,
+          "is_planned": false
+        },
+        {
+          "id": "33333333-3333-3333-3333-333333333333",
+          "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          "provider": "github",
+          "external_id": "deploy-3",
+          "environment": "production",
+          "sha": "ghi789jkl012",
+          "status": "success",
+          "deployed_at": "2024-01-17T10:00:00+00:00",
+          "finished_at": "2024-01-17T10:05:00+00:00",
+          "is_production": true,
+          "is_successful": true,
+          "is_planned": true
+        }
+      ],
+      "window": {
+        "start": "2024-01-14T00:00:00+00:00",
+        "end": "2024-01-20T23:59:59+00:00",
+        "window_type": "rolling_28d"
+      },
+      "expected": {
+        "metric": "deployment_rework_rate",
+        "value": 33.33,
+        "unit": "percentage",
+        "status": "ok",
+        "n": 3,
+        "unplanned_count": 1,
+        "total_count": 3,
+        "note": null
+      }
+    },
+    {
+      "name": "all_planned",
+      "description": "All deployments are planned - rework should be 0%",
+      "deployments": [
+        {
+          "id": "11111111-1111-1111-1111-111111111111",
+          "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          "provider": "github",
+          "external_id": "deploy-1",
+          "environment": "production",
+          "sha": "abc123def456",
+          "status": "success",
+          "deployed_at": "2024-01-15T10:00:00+00:00",
+          "finished_at": "2024-01-15T10:05:00+00:00",
+          "is_production": true,
+          "is_successful": true,
+          "is_planned": true
+        },
+        {
+          "id": "22222222-2222-2222-2222-222222222222",
+          "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          "provider": "github",
+          "external_id": "deploy-2",
+          "environment": "production",
+          "sha": "def456abc789",
+          "status": "success",
+          "deployed_at": "2024-01-16T10:00:00+00:00",
+          "finished_at": "2024-01-16T10:05:00+00:00",
+          "is_production": true,
+          "is_successful": true,
+          "is_planned": true
+        }
+      ],
+      "window": {
+        "start": "2024-01-14T00:00:00+00:00",
+        "end": "2024-01-20T23:59:59+00:00",
+        "window_type": "rolling_28d"
+      },
+      "expected": {
+        "metric": "deployment_rework_rate",
+        "value": 0.0,
+        "unit": "percentage",
+        "status": "ok",
+        "n": 2,
+        "unplanned_count": 0,
+        "total_count": 2,
+        "note": null
+      }
+    },
+    {
+      "name": "all_unplanned",
+      "description": "All deployments are unplanned - rework should be 100%",
+      "deployments": [
+        {
+          "id": "11111111-1111-1111-1111-111111111111",
+          "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          "provider": "github",
+          "external_id": "deploy-1",
+          "environment": "production",
+          "sha": "abc123def456",
+          "status": "success",
+          "deployed_at": "2024-01-15T10:00:00+00:00",
+          "finished_at": "2024-01-15T10:05:00+00:00",
+          "is_production": true,
+          "is_successful": true,
+          "is_planned": false
+        }
+      ],
+      "window": {
+        "start": "2024-01-14T00:00:00+00:00",
+        "end": "2024-01-20T23:59:59+00:00",
+        "window_type": "rolling_28d"
+      },
+      "expected": {
+        "metric": "deployment_rework_rate",
+        "value": 100.0,
+        "unit": "percentage",
+        "status": "ok",
+        "n": 1,
+        "unplanned_count": 1,
+        "total_count": 1,
+        "note": null
+      }
+    },
+    {
+      "name": "no_production_deployments",
+      "description": "No production deployments - should return NO_EVENTS",
+      "deployments": [
+        {
+          "id": "11111111-1111-1111-1111-111111111111",
+          "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          "provider": "github",
+          "external_id": "deploy-staging",
+          "environment": "staging",
+          "sha": "staging123",
+          "status": "success",
+          "deployed_at": "2024-01-15T10:00:00+00:00",
+          "finished_at": "2024-01-15T10:05:00+00:00",
+          "is_production": false,
+          "is_successful": true,
+          "is_planned": true
+        }
+      ],
+      "window": {
+        "start": "2024-01-14T00:00:00+00:00",
+        "end": "2024-01-20T23:59:59+00:00",
+        "window_type": "rolling_28d"
+      },
+      "expected": {
+        "metric": "deployment_rework_rate",
+        "value": null,
+        "unit": "percentage",
+        "status": "no_events",
+        "n": 0,
+        "note": "No production deployments in window"
+      }
+    },
+    {
+      "name": "empty_window",
+      "description": "No deployments at all - should return NO_EVENTS",
+      "deployments": [],
+      "window": {
+        "start": "2024-01-14T00:00:00+00:00",
+        "end": "2024-01-20T23:59:59+00:00",
+        "window_type": "rolling_28d"
+      },
+      "expected": {
+        "metric": "deployment_rework_rate",
+        "value": null,
+        "unit": "percentage",
+        "status": "no_events",
+        "n": 0,
+        "note": "No production deployments in window"
+      }
+    }
+  ]
+}

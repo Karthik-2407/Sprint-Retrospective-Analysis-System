@@ -1,0 +1,21 @@
+# Grafana datasource provisioning for DORA Platform
+# This file is mounted at /etc/grafana/provisioning/datasources/datasource.yaml
+
+apiVersion: 1
+
+datasources:
+  - name: DORA PostgreSQL
+    type: postgres
+    access: proxy
+    url: db:5432
+    database: ${POSTGRES_DB:-dora}
+    user: grafana_ro
+    secureJsonData:
+      password: ${GRAFANA_ADMIN_PASSWORD:-change-me}
+    jsonData:
+      sslmode: disable
+      maxOpenConns: 10
+      maxIdleConns: 5
+      connMaxLifetime: 14400
+    editable: false
+    isDefault: true

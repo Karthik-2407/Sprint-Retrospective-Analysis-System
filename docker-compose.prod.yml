@@ -1,0 +1,187 @@
+name: dora-platform-prod
+
+x-app: &app
+  build: .
+  image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-local}/dora-platform:${APP_VERSION:?set APP_VERSION}
+  env_file: .env
+  restart: unless-stopped
+  read_only: true
+  tmpfs:
+    - /tmp
+    - /var/run
+  deploy:
+    resources:
+      limits:
+        cpus: "1.0"
+        memory: 512M
+      reservations:
+        cpus: "0.25"
+        memory: 128M
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+
+services:
+  db:
+    image: postgres:17@sha256:5b3c5b3c5b3c5b3c5b3c5b3c5b3c5b3c5b3c5b3c5b3c5b3c5b3c5b3c5b3c5b3c
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dora}
+      POSTGRES_USER: ${POSTGRES_USER:-dora}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres/init:/docker-entrypoint-initdb.d:ro
+    secrets:
+      - postgres_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  migrate:
+    build: .
+    env_file: .env
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    secrets:
+      - postgres_password
+
+  api:
+    <<: *app
+    command: ["uvicorn", "dora_platform.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports: []
+    secrets:
+      - postgres_password
+      - github_app_key
+      - github_webhook_secret
+      - gitlab_token
+      - gitlab_webhook_token
+      - grafana_admin_password
+
+  worker:
+    <<: *app
+    command: ["python", "-m", "dora_platform.worker"]
+    healthcheck:
+      disable: true
+    secrets:
+      - postgres_password
+      - github_app_key
+      - github_webhook_secret
+      - gitlab_token
+      - gitlab_webhook_token
+
+  dashboard:
+    <<: *app
+    command: ["streamlit", "run", "src/dora_platform/dashboards/app.py",
+              "--server.port=8501", "--server.address=0.0.0.0"]
+    ports: []
+    secrets:
+      - postgres_password
+
+  grafana:
+    image: grafana/grafana-oss:11.2.0@sha256:1111111111111111111111111111111111111111111111111111111111111111
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD_FILE: /run/secrets/grafana_admin_password
+      GF_SECURITY_ADMIN_USER: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports: []
+    depends_on:
+      - db
+    secrets:
+      - grafana_admin_password
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+  proxy:
+    image: caddy:2.8-alpine@sha256:2222222222222222222222222222222222222222222222222222222222222222
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+      - dashboard
+      - grafana
+    secrets:
+      - postgres_password
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+        reservations:
+          cpus: "0.1"
+          memory: 32M
+
+  prometheus:
+    image: prom/prometheus:v2.55.0@sha256:3333333333333333333333333333333333333333333333333333333333333333
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports: ["9090:9090"]
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+volumes:
+  pgdata:
+  grafana-data:
+  caddy-data:
+  caddy-config:
+  prometheus-data:
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  github_app_key:
+    file: ./secrets/github_app_key.pem
+  github_webhook_secret:
+    file: ./secrets/github_webhook_secret.txt
+  gitlab_token:
+    file: ./secrets/gitlab_token.txt
+  gitlab_webhook_token:
+    file: ./secrets/gitlab_webhook_token.txt
+  grafana_admin_password:
+    file: ./secrets/grafana_admin_password.txt

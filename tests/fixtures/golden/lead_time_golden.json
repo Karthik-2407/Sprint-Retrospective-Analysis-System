@@ -1,0 +1,286 @@
+{
+  "description": "Golden dataset for lead time metric",
+  "test_cases": [
+    {
+      "name": "normal_merge_to_deploy",
+      "description": "PR merged then deployed to production",
+      "prs": [
+        {
+          "id": "11111111-1111-1111-1111-111111111111",
+          "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          "provider": "github",
+          "external_id": "1",
+          "title": "Feature PR",
+          "state": "merged",
+          "merge_method": "merge",
+          "merge_commit_sha": "abc123def456",
+          "base_branch": "main",
+          "head_branch": "feature",
+          "opened_at": "2024-01-10T09:00:00+00:00",
+          "merged_at": "2024-01-15T10:00:00+00:00",
+          "closed_at": "2024-01-15T10:00:00+00:00",
+          "is_merged": true,
+          "commits": [
+            {
+              "sha": "abc123def456",
+              "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+              "authored_at": "2024-01-10T09:30:00+00:00",
+              "message": "Initial commit"
+            },
+            {
+              "sha": "def456abc789",
+              "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+              "authored_at": "2024-01-12T14:00:00+00:00",
+              "message": "Add feature"
+            }
+          ]
+        }
+      ],
+      "deployments": [
+        {
+          "id": "22222222-2222-2222-2222-222222222222",
+          "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          "provider": "github",
+          "external_id": "deploy-1",
+          "environment": "production",
+          "sha": "abc123def456",
+          "status": "success",
+          "deployed_at": "2024-01-16T10:00:00+00:00",
+          "finished_at": "2024-01-16T10:05:00+00:00",
+          "is_production": true,
+          "is_successful": true,
+          "commits": [
+            {
+              "sha": "abc123def456",
+              "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+              "authored_at": "2024-01-10T09:30:00+00:00",
+              "message": "Initial commit"
+            }
+          ]
+        }
+      ],
+      "window": {
+        "start": "2024-01-14T00:00:00+00:00",
+        "end": "2024-01-20T23:59:59+00:00",
+        "window_type": "rolling_28d"
+      },
+      "expected_primary": {
+        "metric": "lead_time",
+        "value": 86400.0,
+        "unit": "seconds",
+        "status": "ok",
+        "n": 1,
+        "note": null
+      },
+      "expected_secondary": {
+        "metric": "lead_time_commit_to_deploy",
+        "value": 520200.0,
+        "unit": "seconds",
+        "status": "ok",
+        "n": 1,
+        "note": null
+      }
+    },
+    {
+      "name": "pending_pr_not_deployed",
+      "description": "PR merged but not yet deployed - should be NO_EVENTS for that PR",
+      "prs": [
+        {
+          "id": "33333333-3333-3333-3333-333333333333",
+          "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          "provider": "github",
+          "external_id": "2",
+          "title": "Pending PR",
+          "state": "merged",
+          "merge_method": "squash",
+          "merge_commit_sha": "squash123",
+          "base_branch": "main",
+          "head_branch": "pending",
+          "opened_at": "2024-01-18T09:00:00+00:00",
+          "merged_at": "2024-01-18T14:00:00+00:00",
+          "closed_at": "2024-01-18T14:00:00+00:00",
+          "is_merged": true,
+          "commits": [
+            {
+              "sha": "commit1",
+              "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+              "authored_at": "2024-01-15T09:00:00+00:00",
+              "message": "First commit"
+            },
+            {
+              "sha": "commit2",
+              "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+              "authored_at": "2024-01-17T10:00:00+00:00",
+              "message": "Second commit"
+            }
+          ]
+        }
+      ],
+      "deployments": [],
+      "window": {
+        "start": "2024-01-14T00:00:00+00:00",
+        "end": "2024-01-20T23:59:59+00:00",
+        "window_type": "rolling_28d"
+      },
+      "expected_primary": {
+        "metric": "lead_time",
+        "value": null,
+        "unit": "seconds",
+        "status": "no_events",
+        "n": 0,
+        "note": "All 1 merged PRs pending deployment"
+      },
+      "expected_secondary": {
+        "metric": "lead_time_commit_to_deploy",
+        "value": null,
+        "unit": "seconds",
+        "status": "no_events",
+        "n": 0,
+        "note": "All 1 merged PRs pending deployment"
+      }
+    },
+    {
+      "name": "multiple_prs_mixed",
+      "description": "Multiple PRs, some deployed some pending",
+      "prs": [
+        {
+          "id": "11111111-1111-1111-1111-111111111111",
+          "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          "provider": "github",
+          "external_id": "1",
+          "title": "PR 1",
+          "state": "merged",
+          "merge_method": "merge",
+          "merge_commit_sha": "sha1",
+          "base_branch": "main",
+          "head_branch": "feature1",
+          "opened_at": "2024-01-10T09:00:00+00:00",
+          "merged_at": "2024-01-15T10:00:00+00:00",
+          "closed_at": "2024-01-15T10:00:00+00:00",
+          "is_merged": true,
+          "commits": [
+            {
+              "sha": "sha1",
+              "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+              "authored_at": "2024-01-10T09:30:00+00:00",
+              "message": "Commit 1"
+            }
+          ]
+        },
+        {
+          "id": "22222222-2222-2222-2222-222222222222",
+          "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          "provider": "github",
+          "external_id": "2",
+          "title": "PR 2",
+          "state": "merged",
+          "merge_method": "squash",
+          "merge_commit_sha": "sha2",
+          "base_branch": "main",
+          "head_branch": "feature2",
+          "opened_at": "2024-01-12T09:00:00+00:00",
+          "merged_at": "2024-01-16T10:00:00+00:00",
+          "closed_at": "2024-01-16T10:00:00+00:00",
+          "is_merged": true,
+          "commits": [
+            {
+              "sha": "sha2",
+              "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+              "authored_at": "2024-01-12T09:30:00+00:00",
+              "message": "Commit 2"
+            }
+          ]
+        },
+        {
+          "id": "33333333-3333-3333-3333-333333333333",
+          "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          "provider": "github",
+          "external_id": "3",
+          "title": "PR 3 pending",
+          "state": "merged",
+          "merge_method": "rebase",
+          "merge_commit_sha": "sha3",
+          "base_branch": "main",
+          "head_branch": "feature3",
+          "opened_at": "2024-01-14T09:00:00+00:00",
+          "merged_at": "2024-01-18T10:00:00+00:00",
+          "closed_at": "2024-01-18T10:00:00+00:00",
+          "is_merged": true,
+          "commits": [
+            {
+              "sha": "sha3",
+              "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+              "authored_at": "2024-01-14T09:30:00+00:00",
+              "message": "Commit 3"
+            }
+          ]
+        }
+      ],
+      "deployments": [
+        {
+          "id": "44444444-4444-4444-4444-444444444444",
+          "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          "provider": "github",
+          "external_id": "deploy-1",
+          "environment": "production",
+          "sha": "sha1",
+          "status": "success",
+          "deployed_at": "2024-01-16T10:00:00+00:00",
+          "finished_at": "2024-01-16T10:05:00+00:00",
+          "is_production": true,
+          "is_successful": true,
+          "commits": [
+            {
+              "sha": "sha1",
+              "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+              "authored_at": "2024-01-10T09:30:00+00:00",
+              "message": "Commit 1"
+            }
+          ]
+        },
+        {
+          "id": "55555555-5555-5555-5555-555555555555",
+          "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          "provider": "github",
+          "external_id": "deploy-2",
+          "environment": "production",
+          "sha": "sha2",
+          "status": "success",
+          "deployed_at": "2024-01-18T10:00:00+00:00",
+          "finished_at": "2024-01-18T10:05:00+00:00",
+          "is_production": true,
+          "is_successful": true,
+          "commits": [
+            {
+              "sha": "sha2",
+              "repository_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+              "authored_at": "2024-01-12T09:30:00+00:00",
+              "message": "Commit 2"
+            }
+          ]
+        }
+      ],
+      "window": {
+        "start": "2024-01-14T00:00:00+00:00",
+        "end": "2024-01-20T23:59:59+00:00",
+        "window_type": "rolling_28d"
+      },
+      "expected_primary": {
+        "metric": "lead_time",
+        "value": 129600.0,
+        "unit": "seconds",
+        "status": "ok",
+        "n": 2,
+        "note": null
+      },
+      "expected_secondary": {
+        "metric": "lead_time_commit_to_deploy",
+        "value": 520200.0,
+        "unit": "seconds",
+        "status": "ok",
+        "n": 2,
+        "note": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+# Caddy reverse proxy configuration for DORA Platform (Production)
+# This file is used in docker-compose.prod.yml
+
+{
+    admin off
+    auto_https off
+}
+
+:80 {
+    # Redirect HTTP to HTTPS
+    redir https://{host}{uri} permanent
+}
+
+:443 {
+    # TLS certificates managed externally (Let's Encrypt, cert-manager, etc.)
+    # tls /certs/cert.pem /certs/key.pem
+
+    # Security headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    }
+
+    # Request size limits
+    request_body {
+        max_size 10MB
+    }
+
+    # API routes
+    handle_path /api/* {
+        reverse_proxy api:8000 {
+            header_up X-Forwarded-Proto "https"
+            header_up X-Forwarded-For {remote}
+            header_up X-Real-IP {remote}
+        }
+    }
+
+    # Dashboard routes
+    handle_path /dashboard/* {
+        reverse_proxy dashboard:8501 {
+            header_up X-Forwarded-Proto "https"
+            header_up X-Forwarded-For {remote}
+            header_up X-Real-IP {remote}
+        }
+    }
+
+    # Grafana routes
+    handle_path /grafana/* {
+        reverse_proxy grafana:3000 {
+            header_up X-Forwarded-Proto "https"
+            header_up X-Forwarded-For {remote}
+            header_up X-Real-IP {remote}
+        }
+    }
+
+    # Health checks (no auth)
+    handle /healthz {
+        reverse_proxy api:8000
+    }
+
+    handle /readyz {
+        reverse_proxy api:8000
+    }
+
+    # Default: deny
+    respond "Not Found" 404
+}
